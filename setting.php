@@ -258,7 +258,7 @@ $default_max_size = 750;
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const API_URL = 'functions/setting_api_function.php';
+        const API_URL = 'functions/setting.php';
         const setupStatus = <?= json_encode($setup_status) ?>;
         const CURRENT_USER_EMAIL = '<?= htmlspecialchars($current_user_email, ENT_QUOTES, 'UTF-8') ?>';
         
