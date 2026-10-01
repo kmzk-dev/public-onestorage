@@ -1,0 +1,43 @@
+name: Release - Build & Publish Installer ZIP
+
+# タグ (v*.*.* 形式) がプッシュされた際に自動リリース ZIPを作成する
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # GitHub Releases へのアセットアップロードに必要
+
+    steps:
+      - name: ソースコードをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: リリース用 ZIP を作成
+        run: |
+          # src/ ディレクトリ配下のみをZIPアーカイブ化
+          cd src
+          zip -r ../onestorage-${{ github.ref_name }}.zip .
+
+      - name: GitHub Release を作成してZIPを添付
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ONE STORAGE ${{ github.ref_name }}
+          body: |
+            ## インストール方法
+
+            1. `installer.php` だけをサーバーの公開ディレクトリにアップロード
+            2. ブラウザで `https://yourdomain.com/installer.php` にアクセス
+            3. 画面の指示に従ってインストールを完了
+            4. **インストール後は `installer.php` を必ず削除してください**
+
+            ### 手動インストール
+            `onestorage-${{ github.ref_name }}.zip` をダウンロードして展開し、公開ディレクトリにアップロードしてください。
+          files: |
+            onestorage-${{ github.ref_name }}.zip
+            src/installer.php
+          draft: false
+          prerelease: false

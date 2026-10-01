@@ -1,0 +1,10 @@
+services:
+  web:
+    build: .
+    container_name: onestorage-preview
+    ports:
+      - "8080:80"
+    environment:
+      - SKIP_AUTH=1
+    volumes:
+      - ./src:/var/www/html

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONESTORAGE ローカル復号ツール</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .btn-primary {
+            background-color: #0d6efd;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: #0b5ed7;
+        }
+        .btn-primary:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-lg bg-white rounded-lg shadow-lg p-8">
+        <h1 class="text-2xl font-bold text-center text-gray-800 mb-2">ONESTORAGE 復号ツール</h1>
+        <p class="text-center text-gray-500 mb-6">ブラウザ上で安全にファイルを復号します。</p>
+
+        <div class="space-y-6">
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">1. メールアドレス</label>
+                <input type="email" id="email" placeholder="ONESTORAGEに登録したメールアドレス" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <div>
+                <label for="fileInput" class="block text-sm font-medium text-gray-700 mb-1">2. 暗号化されたファイル</label>
+                <input type="file" id="fileInput" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            </div>
+
+            <button id="decryptBtn" class="w-full text-white font-bold py-3 px-4 rounded-md btn-primary">
+                復号してダウンロード
+            </button>
+
+            <div id="status" class="text-center text-sm text-gray-600 h-5"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const emailInput = document.getElementById('email');
+            const fileInput = document.getElementById('fileInput');
+            const decryptBtn = document.getElementById('decryptBtn');
+            const statusDiv = document.getElementById('status');
+
+            const AES_BLOCK_SIZE = 16;
+
+            /**
+             * PHPの `hash('sha256', ..., true)` と同等の鍵を生成します。
+             * @param {string} email
+             * @returns {Promise<CryptoKey>}
+             */
+            async function getDecryptionKey(email) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(email);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                
+                // 生のハッシュバッファを復号用のCryptoKeyとしてインポート
+                return await crypto.subtle.importKey(
+                    'raw',
+                    hashBuffer,
+                    { name: 'AES-CBC' },
+                    false, // exportはしない
+                    ['decrypt']
+                );
+            }
+
+            /**
+             * PKCS#7パディングを除去します。
+             * @param {ArrayBuffer} decryptedBuffer
+             * @returns {ArrayBuffer}
+             */
+            function unpad(decryptedBuffer) {
+                const view = new Uint8Array(decryptedBuffer);
+                const padCount = view[view.length - 1];
+                if (padCount < 1 || padCount > AES_BLOCK_SIZE) {
+                    // パディングが不正な場合は、そのまま返す（データ破損の可能性）
+                    console.warn("Invalid padding value:", padCount);
+                    return decryptedBuffer;
+                }
+                // パディング部分が正しいか検証
+                for (let i = 0; i < padCount; i++) {
+                    if (view[view.length - 1 - i] !== padCount) {
+                        console.warn("Invalid padding bytes found.");
+                        return decryptedBuffer;
+                    }
+                }
+                return decryptedBuffer.slice(0, decryptedBuffer.byteLength - padCount);
+            }
+
+            /**
+             * ファイルをダウンロードさせます。
+             * @param {ArrayBuffer} data
+             * @param {string} originalFilename
+             */
+            function downloadFile(data, originalFilename) {
+                const blob = new Blob([data]);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+
+                // ファイル名の加工: "file.txt" -> "file_Decrypt.txt"
+                const parts = originalFilename.split('.');
+                const extension = parts.pop();
+                const baseName = parts.join('.');
+                const newFilename = `${baseName}_Decrypt.${extension}`;
+
+                a.href = url;
+                a.download = newFilename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            decryptBtn.addEventListener('click', async () => {
+                const email = emailInput.value;
+                const file = fileInput.files[0];
+
+                if (!email || !file) {
+                    alert('メールアドレスとファイルの両方を選択してください。');
+                    return;
+                }
+
+                setLoading(true, 'ファイルを読み込み中...');
+
+                try {
+                    const fileBuffer = await file.arrayBuffer();
+                    
+                    if (fileBuffer.byteLength < AES_BLOCK_SIZE) {
+                        throw new Error("ファイルが小さすぎるか、破損しています。");
+                    }
+
+                    // 1. IVと暗号文を分離
+                    const iv = fileBuffer.slice(0, AES_BLOCK_SIZE);
+                    const ciphertext = fileBuffer.slice(AES_BLOCK_SIZE);
+
+                    setLoading(true, '鍵を生成中...');
+                    const key = await getDecryptionKey(email);
+                    
+                    setLoading(true, '復号処理中...');
+                    const decryptedPaddedBuffer = await crypto.subtle.decrypt(
+                        { name: 'AES-CBC', iv: iv },
+                        key,
+                        ciphertext
+                    );
+
+                    setLoading(true, 'パディングを処理中...');
+                    const decryptedBuffer = unpad(decryptedPaddedBuffer);
+
+                    setLoading(true, 'ダウンロードを準備中...');
+                    downloadFile(decryptedBuffer, file.name);
+
+                    statusDiv.textContent = '復号とダウンロードが完了しました。';
+
+                } catch (error) {
+                    console.error('Decryption failed:', error);
+                    statusDiv.textContent = '復号に失敗しました。キーが違うかファイルが破損しています。';
+                    alert('復号に失敗しました。メールアドレスが正しいか、ファイルが破損していないか確認してください。');
+                } finally {
+                    setLoading(false);
+                }
+            });
+
+            function setLoading(isLoading, message = '') {
+                decryptBtn.disabled = isLoading;
+                statusDiv.textContent = isLoading ? message : '';
+                if (isLoading) {
+                    decryptBtn.textContent = '処理中...';
+                } else {
+                    decryptBtn.textContent = '復号してダウンロード';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

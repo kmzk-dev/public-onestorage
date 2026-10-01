@@ -1,0 +1,48 @@
+<?php
+//auth.php: 認証状態の確認とフロー制御
+require_once __DIR__ . '/../path.php';
+require_once __DIR__ . '/cookie.php';
+
+if (!defined('AUTH_CONFIG_PATH') || !file_exists(AUTH_CONFIG_PATH)) {
+    if (getenv('SKIP_AUTH') !== '1' && (!isset($_ENV['SKIP_AUTH']) || $_ENV['SKIP_AUTH'] !== '1')) {
+        redirect('setting.php');
+    }
+}
+if (!defined('MFA_SECRET_PATH') || !file_exists(MFA_SECRET_PATH)) {
+    if (getenv('SKIP_AUTH') !== '1' && (!isset($_ENV['SKIP_AUTH']) || $_ENV['SKIP_AUTH'] !== '1')) {
+        redirect('setting.php');
+    }
+}
+
+function is_authenticated(): bool {
+    if (getenv('SKIP_AUTH') === '1' || (isset($_ENV['SKIP_AUTH']) && $_ENV['SKIP_AUTH'] === '1')) {
+        return true;
+    }
+
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    return validate_auth_cookie();
+}
+
+function check_authentication() {
+    if (is_authenticated()) {
+        return true;
+    }
+    
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    if (isset($_SESSION['auth_passed']) && $_SESSION['auth_passed'] === true) {
+        redirect('mfa_login.php');
+        exit;
+    }
+
+    $_SESSION = [];
+    session_destroy();
+
+    redirect('login.php');
+    exit;
+}

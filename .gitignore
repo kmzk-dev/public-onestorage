@@ -1,0 +1,15 @@
+.dir_cache.json
+config/
+data-*
+.vscode/
+previous/
+venv/
+decrypt_tool/build/
+decrypt_tool/dist/
+*.spec
+share*/
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+AGENTS.md
