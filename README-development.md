@@ -68,7 +68,7 @@ onestorage/ (リポジトリルート)
     │   └── share_config.php       # 共有リンク（トークン、有効期限、DL制限等）
     │
     ├── functions/                 # バックエンド処理ロジック群
-    │   ├── admin_api.php          # 管理者API（容量変更、MFAトグル、セキュリティ自己診断）
+    │   ├── admin_api.php          # 管理者API（容量変更、MFAトグル、セキュリティ診断、セルフアップデータ）
     │   ├── api_delete_preview_cache.php # プレビュー一時キャッシュ削除API
     │   ├── auth.php               # 認証・セッション・Cookie検証・アクセス制御
     │   ├── chunk_upload.php       # チャンク分割アップロード・結合・暗号化・容量/上限チェック
@@ -133,6 +133,17 @@ onestorage/ (リポジトリルート)
 - 外部ユーザーに特定のファイルのみを一時共有可能。
 - `config/share_config.php` にトークン、有効期限、最大ダウンロード回数を記録。
 - `share.php` 経由でパスワード保護・有効期限検証・ストリーム復号ダウンロードを提供。
+
+### ⑥ セルフアップデータ機能 (`functions/admin_api.php`, `admin.php`)
+- **API 手動トリガー & リリース取得 (`check_releases`):** GitHub Releases API (`https://api.github.com/repos/kmzk-dev/public-onestorage/releases`) から最新リリースを取得し、現在の `APP_VERSION` より新しいバージョンのみを抽出して管理画面のセレクトボックスへ返却。
+- **タイムアウト・中断対策:** アップデート適用処理（`apply_update`）の冒頭で `@set_time_limit(120)` および `ignore_user_abort(true)` を宣言し、サーバー制限による途中切断や不整合事故を防止。
+- **一時ディレクトリでの安全展開:** ZIP を直接ルートに解凍するのではなく、サーバーの一時領域（`sys_get_temp_dir()`）へダウンロード・完全展開・検証した上で上書きコピーを実施。
+- **厳格なデータ・設定保護ガード (`updater_recursive_copy`):**
+  - `config/` ディレクトリ配下の全ファイル（`auth.php`, `config.php`, `cookie_key.php`, `mfa_secret.php`, `accept.json`, `share_config.php` 等）を完全保護（上書き禁止）。
+  - 実データ領域（`data*`）および共有領域（`share*`）の難読化フォルダを完全にコピー・上書き対象から除外。
+  - SQLite データベース実体（`.storage.db`, `.share.db`）およびジャーナルファイルの完全保護。
+  - 残骸となりうる `installer.php` や `.installer_done` のコピー除外。
+- **DB スキーマ自動追記との親和性:** アプリケーション更新後の初回アクセス時に、既存の `init_db_schema()` / `get_db()` を通じて `CREATE TABLE IF NOT EXISTS` やマイグレーション処理が自動実行される構造を維持。
 
 ---
 
