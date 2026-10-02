@@ -1,13 +1,13 @@
 <?php
 /**
- * ONE STORAGE - ワンファイルインストーラー
+ * ONE STORAGE - ワンファイルインストーラー & アップデータ
  *
  * 使い方:
  *   1. このファイル (installer.php) をサーバーの公開ディレクトリにアップロード
  *   2. ブラウザで https://yourdomain.com/installer.php にアクセス
- *   3. 画面の指示に従ってインストールを完了させる
+ *   3. 画面の指示に従って新規インストールまたはアップデートを実行
  *
- * 必要な PHP 拡張: curl または allow_url_fopen, ZipArchive
+ * 必要な PHP 拡張: curl または allow_url_fopen, ZipArchive, pdo_sqlite
  * 対応 PHP バージョン: 8.0 以上
  */
 
@@ -15,15 +15,20 @@
 // 設定
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const GITHUB_REPO        = 'kmzk-dev/public-onestorage'; // GitHub リポジトリ (owner/repo)
-const GITHUB_API_URL     = 'https://api.github.com/repos/' . GITHUB_REPO . '/releases/latest';
+/**
+ * インストール対象のバージョン（Git タグ名）
+ * - 特定バージョンを固定する場合: 例 'v1.2.1'
+ * - 常に最新版を対象とする場合: 'latest'
+ */
+const TARGET_VERSION     = 'v1.2.2'; 
 const INSTALL_LOCK_FILE  = __DIR__ . '/.installer_done';
-const INSTALLER_TIMEOUT  = 25; // 秒 (レンタルサーバーの制限より余裕を持たせる)
+const INSTALLER_TIMEOUT  = 25; // 秒 (一般的なサーバー制限より余裕を持たせる)
 const MIN_PHP_VERSION    = '8.0.0';
 
 // 既にインストール済みならブロック
 if (file_exists(INSTALL_LOCK_FILE)) {
     http_response_code(403);
-    die('<h1>403 Forbidden</h1><p>インストールは既に完了しています。セキュリティのため <code>installer.php</code> を削除してください。</p>');
+    die('<h1>403 Forbidden</h1><p>インストール・更新は既に完了しています。セキュリティのため <code>installer.php</code> を削除してください。<br>アップデートを行う場合は、サーバーから <code>.installer_done</code> を削除した上で再アクセスしてください。</p>');
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -63,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /**
- * PHP環境のチェックを行い、結果を返す
+ * PHP環境および既存データの保護チェックを行い、結果を返す
  */
 function run_checks(): array
 {
@@ -124,18 +129,32 @@ function run_checks(): array
     ];
     if (!$tmp_ok) $all_ok = false;
 
-    // 既存ファイルの衝突チェック
-    $key_files     = ['index.php', 'login.php', 'setting.php', 'logout.php'];
-    $conflicts     = array_filter($key_files, fn($f) => file_exists(__DIR__ . '/' . $f));
-    $no_conflict   = empty($conflicts);
-    $checks[] = [
-        'name'    => 'インストール先の競合チェック',
-        'ok'      => $no_conflict,
-        'message' => $no_conflict
-            ? 'OK (既存ファイルなし)'
-            : '既存のファイルが見つかりました: ' . implode(', ', $conflicts) . '。上書きされます。',
-        'warning' => !$no_conflict,
-    ];
+    // 既存インストールの判定とデータ・認証情報の保護チェック
+    $is_existing_install = file_exists(__DIR__ . '/index.php');
+    $has_auth_config     = file_exists(__DIR__ . '/config/auth.php');
+    $has_main_config     = file_exists(__DIR__ . '/config/config.php');
+
+    if ($is_existing_install && $has_auth_config && $has_main_config) {
+        $checks[] = [
+            'name'    => 'モード判定: アップデートモード',
+            'ok'      => true,
+            'message' => '既存の ONE STORAGE を検出しました。設定（config/）および保存データは完全に保護・維持されます。',
+            'is_update' => true,
+        ];
+    } elseif ($is_existing_install) {
+        $checks[] = [
+            'name'    => 'モード判定: 既存ファイル上書きインストール',
+            'ok'      => true,
+            'message' => '既存のファイルが見つかりました。プログラムファイルは最新版へ上書き更新されます。',
+            'warning' => true,
+        ];
+    } else {
+        $checks[] = [
+            'name'    => 'モード判定: 新規クリーンインストール',
+            'ok'      => true,
+            'message' => '新規インストールとしてセットアップを開始します。',
+        ];
+    }
 
     return ['success' => true, 'all_ok' => $all_ok, 'checks' => $checks];
 }
@@ -145,11 +164,18 @@ function run_checks(): array
  */
 function fetch_latest_release_info(): array
 {
-    $api_url = GITHUB_API_URL;
+    // TARGET_VERSION が指定されていればそのタグの情報を、'latest' なら最新リリースを取得
+    $target = trim(TARGET_VERSION);
+    if (!empty($target) && $target !== 'latest') {
+        $api_url = 'https://api.github.com/repos/' . GITHUB_REPO . '/releases/tags/' . rawurlencode($target);
+    } else {
+        $api_url = 'https://api.github.com/repos/' . GITHUB_REPO . '/releases/latest';
+    }
+
     $response = http_get($api_url, ['Accept: application/vnd.github+json', 'User-Agent: OneStorage-Installer/1.0']);
 
     if ($response === false) {
-        return ['success' => false, 'message' => 'GitHub API へのアクセスに失敗しました。サーバーの外部通信設定を確認してください。'];
+        return ['success' => false, 'message' => "GitHub API へのアクセスに失敗しました (対象: {$target})。サーバーの外部通信設定を確認してください。"];
     }
 
     $data = json_decode($response, true);
@@ -159,7 +185,7 @@ function fetch_latest_release_info(): array
 
     // zipball_url: リリースのソースコードZIP
     $zip_url = $data['zipball_url'] ?? '';
-    $version = $data['tag_name'] ?? 'unknown';
+    $version = $data['tag_name'] ?? ($target !== 'latest' ? $target : 'unknown');
 
     // assets に release ZIP があればそちらを優先
     if (!empty($data['assets'])) {
@@ -172,14 +198,14 @@ function fetch_latest_release_info(): array
     }
 
     if (empty($zip_url)) {
-        return ['success' => false, 'message' => 'リリース ZIP ファイルが見つかりませんでした。'];
+        return ['success' => false, 'message' => "バージョン {$version} のリリース ZIP ファイルが見つかりませんでした。"];
     }
 
     return [
         'success' => true,
         'version' => $version,
         'zip_url' => $zip_url,
-        'message' => "最新バージョン {$version} が見つかりました。",
+        'message' => "バージョン {$version} のパッケージが見つかりました。",
     ];
 }
 
@@ -256,7 +282,7 @@ function download_zip(string $url): array
 }
 
 /**
- * ダウンロードした ZIP を展開し、必要なファイルをインストール先にコピーする
+ * ダウンロードした ZIP を展開し、ユーザーデータを保護しながら必要なファイルをインストール先にコピーする
  */
 function extract_and_install(string $zip_path): array
 {
@@ -306,21 +332,29 @@ function extract_and_install(string $zip_path): array
 }
 
 /**
- * インストール完了処理: ロックファイルを作成し、setting.php へのリダイレクト URL を返す
+ * インストール完了処理: ロックファイルを作成し、適切な画面へのリダイレクト URL を返す
  */
 function finalize(): array
 {
     // ロックファイルを作成してインストーラーを無効化
     file_put_contents(INSTALL_LOCK_FILE, date('Y-m-d H:i:s') . PHP_EOL);
 
-    $redirect_url = dirname($_SERVER['SCRIPT_NAME']) . '/setting.php';
-    // パスの正規化
+    // 既存アカウントが存在する場合はログイン画面（または直接メイン画面）、新規なら設定画面へ
+    $has_existing_account = file_exists(__DIR__ . '/config/auth.php');
+    if ($has_existing_account) {
+        $redirect_url = dirname($_SERVER['SCRIPT_NAME']) . '/login.php';
+        $message = 'アップデートが完了しました。ログイン画面へ移動します。';
+    } else {
+        $redirect_url = dirname($_SERVER['SCRIPT_NAME']) . '/setting.php';
+        $message = 'インストールが完了しました。初期設定画面に移動します。';
+    }
+
     $redirect_url = str_replace('//', '/', $redirect_url);
 
     return [
         'success'      => true,
         'redirect_url' => $redirect_url,
-        'message'      => 'インストールが完了しました。セットアップ画面に移動します。',
+        'message'      => $message,
     ];
 }
 
@@ -362,22 +396,25 @@ function http_get(string $url, array $headers = []): string|false
 
 /**
  * GitHub zipball 展開後の実際のソースルートディレクトリを見つける
- * (例: /tmp/onestorage_extract_xxx/kmzk-dev-onestorage-a1b2c3d/ → ここを返す)
  */
 function find_source_root(string $extract_dir): ?string
 {
-    // index.php がルート直下にある場合
     if (file_exists($extract_dir . '/index.php')) {
         return $extract_dir;
     }
 
-    // 1階層下のサブディレクトリを探す
     $items = scandir($extract_dir);
     foreach ($items as $item) {
         if ($item === '.' || $item === '..') continue;
         $sub = $extract_dir . '/' . $item;
-        if (is_dir($sub) && file_exists($sub . '/index.php')) {
+        if (!is_dir($sub)) continue;
+
+        if (file_exists($sub . '/index.php')) {
             return $sub;
+        }
+        // GitHub zipball（リポジトリルート/src/index.php）の構造にも対応
+        if (is_dir($sub . '/src') && file_exists($sub . '/src/index.php')) {
+            return $sub . '/src';
         }
     }
 
@@ -385,7 +422,7 @@ function find_source_root(string $extract_dir): ?string
 }
 
 /**
- * ディレクトリを再帰的にコピーする
+ * ディレクトリを再帰的にコピーする（ユーザーデータ・既存設定の保護ガード付き）
  *
  * @param string[] $exclude ファイル名の除外リスト
  */
@@ -394,16 +431,25 @@ function recursive_copy(string $src, string $dst, array $exclude = []): bool
     $ok = true;
     $items = scandir($src);
 
+    // コピー先で絶対に上書きしてはならない重要設定・DBファイル
+    $protected_files = [
+        'auth.php',
+        'config.php',
+        'cookie_key.php',
+        'mfa_secret.php',
+        'share_config.php',
+        'accept.json',
+        '.storage.db',
+        '.share.db',
+    ];
+
     foreach ($items as $item) {
         if ($item === '.' || $item === '..') continue;
         if (in_array($item, $exclude, true)) continue;
 
-        // data-preview, shareXXX ディレクトリ（実際のユーザーデータ）は除外
-        if ($item === 'data-preview' || str_starts_with($item, 'data') || str_starts_with($item, 'share')) {
-            // ランダム文字列付きのデータ/シェアディレクトリはスキップ
-            // ただし static/functions 等は通す
-            $is_data_like = preg_match('/^(data|share)[A-Za-z0-9]{10,}$/', $item);
-            if ($is_data_like) continue;
+        // data-preview またはランダム文字列付きのデータ・シェアディレクトリ（実際のユーザーデータ）は除外
+        if ($item === 'data-preview' || preg_match('/^(data|share)[A-Za-z0-9]{10,}$/', $item)) {
+            continue;
         }
 
         $src_path = $src . '/' . $item;
@@ -413,10 +459,15 @@ function recursive_copy(string $src, string $dst, array $exclude = []): bool
             if (!is_dir($dst_path)) {
                 @mkdir($dst_path, 0755, true);
             }
-            if (!recursive_copy($src_path, $dst_path, [])) {
+            if (!recursive_copy($src_path, $dst_path, $exclude)) {
                 $ok = false;
             }
         } else {
+            // コピー先に既存の保護対象ファイルが存在する場合は絶対に上書きしない
+            if (file_exists($dst_path) && in_array($item, $protected_files, true)) {
+                continue;
+            }
+
             if (!@copy($src_path, $dst_path)) {
                 $ok = false;
             }
@@ -450,7 +501,7 @@ function recursive_rmdir(string $dir): void
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ONE STORAGE - インストーラー</title>
+    <title>ONE STORAGE - インストーラー & アップデータ</title>
     <meta name="robots" content="noindex, nofollow">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -464,7 +515,7 @@ function recursive_rmdir(string $dir): void
         .log-box .log-err  { color: #f44747; }
         .log-box .log-warn { color: #dcdcaa; }
         .log-box .log-info { color: #9cdcfe; }
-        .check-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+        .check-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; }
         .progress { height: 8px; }
     </style>
 </head>
@@ -501,7 +552,7 @@ function recursive_rmdir(string $dir): void
 
                 <!-- PHASE 1: 環境チェック -->
                 <div id="phaseCheck">
-                    <p class="text-muted">インストールを開始する前に、サーバーの動作環境を確認します。</p>
+                    <p class="text-muted">実行を開始する前に、サーバーの動作環境とデータ保護状態を確認します。</p>
                     <div id="checkResults" class="mb-3"></div>
                     <div id="errorAlert" class="alert alert-danger d-none"></div>
                     <div id="warningAlert" class="alert alert-warning d-none"></div>
@@ -509,7 +560,7 @@ function recursive_rmdir(string $dir): void
                         <i class="fa-solid fa-magnifying-glass me-2"></i>環境チェックを開始
                     </button>
                     <button class="btn btn-success d-none" id="btnProceedToDownload">
-                        <i class="fa-solid fa-arrow-right me-2"></i>インストールを開始する
+                        <i class="fa-solid fa-arrow-right me-2"></i>インストール / 更新を開始する
                     </button>
                 </div>
 
@@ -527,11 +578,11 @@ function recursive_rmdir(string $dir): void
 
                 <!-- PHASE 3: 展開・配置 -->
                 <div id="phaseExtract" class="d-none">
-                    <p class="text-muted">ダウンロードしたファイルを展開・配置します。</p>
+                    <p class="text-muted">ダウンロードしたファイルを展開し、既存データを保護しながら配置します。</p>
                     <div class="log-box" id="extractLog"></div>
                     <div class="mt-3">
                         <button class="btn btn-success d-none" id="btnFinalize">
-                            <i class="fa-solid fa-flag-checkered me-2"></i>インストールを完了する
+                            <i class="fa-solid fa-flag-checkered me-2"></i>処理を完了する
                         </button>
                     </div>
                 </div>
@@ -539,17 +590,17 @@ function recursive_rmdir(string $dir): void
                 <!-- PHASE 4: 完了 -->
                 <div id="phaseDone" class="d-none text-center py-3">
                     <i class="fa-solid fa-circle-check text-success fa-4x mb-3"></i>
-                    <h4 class="text-success">インストール完了！</h4>
+                    <h4 class="text-success" id="doneTitle">処理が完了しました！</h4>
                     <p class="text-muted">
                         セキュリティのため、<strong>installer.php をサーバーから削除してください。</strong>
                     </p>
                     <div class="alert alert-warning text-start">
                         <i class="fa-solid fa-triangle-exclamation me-2"></i>
-                        <strong>重要:</strong> 削除しないと第三者に再インストールされる恐れがあります。
+                        <strong>重要:</strong> 削除しないと第三者に意図しない操作を実行される恐れがあります。
                         FTP またはサーバーのファイルマネージャーから <code>installer.php</code> を削除してください。
                     </div>
-                    <a href="setting.php" class="btn btn-lg btn-primary" id="btnGoSetup">
-                        <i class="fa-solid fa-gear me-2"></i>初期設定へ進む
+                    <a href="login.php" class="btn btn-lg btn-primary" id="btnGoSetup">
+                        <i class="fa-solid fa-arrow-right-to-bracket me-2"></i>次へ進む
                     </a>
                 </div>
 
@@ -620,20 +671,22 @@ document.getElementById('btnStartCheck').addEventListener('click', async functio
 
     const container = document.getElementById('checkResults');
     container.innerHTML = '';
-    let hasError   = false;
+    let hasError = false;
     let hasWarning = false;
 
     for (const c of result.checks) {
         const row = document.createElement('div');
         row.className = 'check-row';
         const icon = c.ok
-            ? '<i class="fa-solid fa-circle-check text-success step-icon"></i>'
+            ? (c.is_update
+                ? '<i class="fa-solid fa-arrows-rotate text-primary step-icon"></i>'
+                : '<i class="fa-solid fa-circle-check text-success step-icon"></i>')
             : '<i class="fa-solid fa-circle-xmark text-danger step-icon"></i>';
         const warn = c.warning
             ? '<i class="fa-solid fa-triangle-exclamation text-warning step-icon"></i>'
             : '';
-        row.innerHTML = (c.ok ? icon : icon) + (c.warning ? warn : '') +
-            `<span>${c.name}</span> <span class="text-muted small">${c.message}</span>`;
+        row.innerHTML = (c.warning ? warn : icon) +
+            `<div><strong>${c.name}</strong> <span class="text-muted small d-block">${c.message}</span></div>`;
         container.appendChild(row);
         if (!c.ok) hasError = true;
         if (c.warning) hasWarning = true;
@@ -643,14 +696,13 @@ document.getElementById('btnStartCheck').addEventListener('click', async functio
         const el = document.getElementById('errorAlert');
         el.textContent = '環境チェックに失敗しました。上記のエラーを解消してから再試行してください。';
         el.classList.remove('d-none');
-        // 再試行ボタンを復活
         this.disabled  = false;
         this.innerHTML = '<i class="fa-solid fa-rotate-right me-2"></i>再チェック';
         this.classList.remove('d-none');
     } else {
         if (hasWarning) {
             const el = document.getElementById('warningAlert');
-            el.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-2"></i>警告があります。内容を確認の上、インストールを続行してください。';
+            el.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-2"></i>注意項目を確認の上、処理を続行してください。';
             el.classList.remove('d-none');
         }
         document.getElementById('btnProceedToDownload').classList.remove('d-none');
@@ -668,7 +720,6 @@ document.getElementById('btnProceedToDownload').addEventListener('click', async 
     setIndicatorActive('ind-download');
     setProgress(30);
 
-    // Step A: リリース情報取得
     appendLog('downloadLog', 'GitHub からリリース情報を取得中...', 'info');
     const releaseResult = await callApi('fetch_release');
 
@@ -681,7 +732,6 @@ document.getElementById('btnProceedToDownload').addEventListener('click', async 
     appendLog('downloadLog', `ダウンロード URL: ${releaseResult.zip_url}`, 'info');
     setProgress(40);
 
-    // Step B: ZIP ダウンロード
     appendLog('downloadLog', 'ZIP ファイルをダウンロード中... (しばらくお待ちください)', 'info');
     const dlResult = await callApi('download', { zip_url: releaseResult.zip_url });
 
@@ -714,7 +764,7 @@ document.getElementById('btnProceedToExtract').addEventListener('click', async f
     }
 
     appendLog('extractLog', result.message, 'ok');
-    appendLog('extractLog', 'ファイルの配置が完了しました。', 'ok');
+    appendLog('extractLog', 'ファイルの配置が完了しました（既存設定・データ領域は保護されました）。', 'ok');
     setProgress(85);
 
     document.getElementById('btnFinalize').classList.remove('d-none');
