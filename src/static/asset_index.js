@@ -631,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('submit', function(e) {
         const form = e.target;
         const actionInput = form.querySelector('input[name="action"]');
-        if (actionInput && actionInput.value === 'delete_item') {
+        if (actionInput && (actionInput.value === 'delete_item' || actionInput.value === 'delete_sharebox_folder')) {
             e.preventDefault();
             const formData = new FormData(form);
             formData.append('ajax', '1');

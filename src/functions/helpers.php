@@ -94,17 +94,36 @@ function ensure_dir_protection(string $dir): void {
 }
 
 /**
- * フォルダとその中身を削除します
+ * 空のフォルダを削除します
+ * （再帰削除は行わず、ファイルやフォルダが存在する場合は削除不可）
  */
 function delete_directory($dir) { 
     if (!file_exists($dir)) return true; 
     if (!is_dir($dir)) return unlink($dir);
-    //TODO 再帰的にな処理がシステムに負荷をかけています。再検討が必要です。
-    foreach (scandir($dir) as $item) { 
-        if ($item == '.' || $item == '..') continue; 
-        if (!delete_directory($dir . DIRECTORY_SEPARATOR . $item)) return false; 
-    } 
-    return rmdir($dir); 
+
+    // ディレクトリ内にファイルやサブフォルダが存在するか確認
+    $items = @scandir($dir);
+    if ($items === false) return false;
+
+    foreach ($items as $item) {
+        if ($item === '.' || $item === '..') continue;
+        // index.html はアクセス防止用ファイルの場合があるため、それだけなら削除可能とする
+        if ($item === 'index.html') {
+            @unlink($dir . DIRECTORY_SEPARATOR . $item);
+            continue;
+        }
+        // 他にアイテムが存在する場合は削除不可
+        return false;
+    }
+    return @rmdir($dir); 
+}
+
+/**
+ * フォルダ内にファイルまたはサブフォルダが存在するか判定
+ * (.や..、index.htmlなどの管理用ファイルは除外)
+ */
+function has_folder_items(string $dir_path): bool {
+    return count_folder_items($dir_path) > 0;
 }
 /* 
  * ディレクトリの合計サイズを再帰的に取得する

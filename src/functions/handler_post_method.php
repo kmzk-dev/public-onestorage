@@ -279,9 +279,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($item_path && strpos($item_path, $target_dir_path) === 0 && !str_starts_with($item_name, '.')) {
                     $is_dir = is_dir($item_path);
                     
+                    if ($is_dir && has_folder_items($item_path)) {
+                        $_SESSION['message'] = [
+                            'type' => 'warning',
+                            'text' => 'フォルダ内にファイルが存在するため削除できません。中のファイルを削除してからフォルダを削除してください。'
+                        ];
+                        break;
+                    }
+
                     /**
                      * フォルダ・ファイルの削除実行
-                     * フォルダの場合サーバー側で再帰的な処理が発生します
+                     * フォルダ内にファイルが存在する場合は削除を制限し、空フォルダのみ安全に削除します
                      */
                     if (($is_dir && delete_directory($item_path)) || (!$is_dir && unlink($item_path))) { 
                         $_SESSION['message'] = ['type' => 'success', 'text' => ($is_dir ? 'フォルダ' : 'ファイル') . 'を削除しました。'];
@@ -318,6 +326,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $active_share = get_active_share_for_folder($item_name);
                 if ($active_share !== null) {
                     $_SESSION['message'] = ['type' => 'warning', 'text' => '共有リンクが有効なフォルダは削除できません。先にリンクを無効化してください。'];
+                    break;
+                }
+                // フォルダ内にファイルが存在するかチェック
+                if (has_folder_items($folder_path)) {
+                    $_SESSION['message'] = [
+                        'type' => 'warning',
+                        'text' => 'フォルダ内にファイルが存在するため削除できません。中のファイルを削除してからフォルダを削除してください。'
+                    ];
                     break;
                 }
                 if (delete_directory($folder_path)) {
