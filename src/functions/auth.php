@@ -4,21 +4,13 @@ require_once __DIR__ . '/../path.php';
 require_once __DIR__ . '/cookie.php';
 
 if (!defined('AUTH_CONFIG_PATH') || !file_exists(AUTH_CONFIG_PATH)) {
-    if (getenv('SKIP_AUTH') !== '1' && (!isset($_ENV['SKIP_AUTH']) || $_ENV['SKIP_AUTH'] !== '1')) {
-        redirect('setting.php');
-    }
+    redirect('setting.php');
 }
 if (!defined('MFA_SECRET_PATH') || !file_exists(MFA_SECRET_PATH)) {
-    if (getenv('SKIP_AUTH') !== '1' && (!isset($_ENV['SKIP_AUTH']) || $_ENV['SKIP_AUTH'] !== '1')) {
-        redirect('setting.php');
-    }
+    redirect('setting.php');
 }
 
 function is_authenticated(): bool {
-    if (getenv('SKIP_AUTH') === '1' || (isset($_ENV['SKIP_AUTH']) && $_ENV['SKIP_AUTH'] === '1')) {
-        return true;
-    }
-
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
