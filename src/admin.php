@@ -14,6 +14,7 @@ require_once __DIR__ . '/functions/mfa.php';
 // 認証チェック
 check_authentication();
 
+$app_version = defined('APP_VERSION') ? APP_VERSION : '1.1.0';
 
 // ディレクトリキャッシュの手動再構築処理
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'admin_rebuild_cache') {
@@ -300,6 +301,30 @@ $initial_qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     <?php endif; ?>
+
+                    <!-- ============================================== -->
+                    <!-- 0. バージョン情報セクション -->
+                    <!-- ============================================== -->
+                    <section id="section-version" class="admin-section mb-5">
+                        <h5 class="fw-bold mb-3 text-dark">
+                            <i class="bi bi-info-circle text-primary me-2"></i>バージョン情報
+                        </h5>
+                        <div class="card border border-light-subtle rounded-3 p-3 bg-light">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="fw-bold text-dark fs-5">ONE STORAGE</span>
+                                        <span class="badge bg-primary text-white fs-6">v<?= htmlspecialchars($app_version, ENT_QUOTES, 'UTF-8') ?></span>
+                                    </div>
+                                    <div class="text-muted small">
+                                        アップデートは
+                                        <a href="https://github.com/kmzk-dev/public-onestorage/releases" target="_blank" class="text-decoration-none">GitHubのリリース</a>
+                                        から任意のバージョンの<code>installer.php</code>をダウンロードしてブラウザから実行してください。
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
 
                     <!-- ============================================== -->
                     <!-- 1. ファイル種別の管理セクション -->

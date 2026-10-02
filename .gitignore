@@ -1,6 +1,6 @@
 .dir_cache.json
 config/
-data-*
+data*/
 .vscode/
 previous/
 venv/
