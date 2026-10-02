@@ -1,6 +1,6 @@
 <?php
 // アプリケーションバージョン定義
-define('APP_VERSION', '1.2.4');
+define('APP_VERSION', '1.2.5');
 // 設定ファイルのパス定義
 define('AUTH_CONFIG_PATH', __DIR__ . '/config/auth.php');
 define('MAIN_CONFIG_PATH', __DIR__ . '/config/config.php');
