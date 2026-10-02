@@ -406,19 +406,20 @@ $json_recent_view = json_encode($is_recent_view);
                         </div>
                     <?php endif; ?>
                     <div id="tableActionsContainer" class="d-none">
-                        <span class="text-muted me-3"><strong id="selectionCount">0</strong>個選択中</span>
+                        <span class="text-muted me-2 me-md-3"><strong id="selectionCount">0</strong>個選択中</span>
                         <?php if ($is_recent_view): ?>
-                            <button class="btn btn-outline-secondary btn-sm" id="batchExcludeBtn"><i class="bi bi-eye-slash me-1"></i>選択項目を除外する</button>
+                            <button class="btn btn-outline-secondary btn-sm" id="batchExcludeBtn" title="選択項目を除外する" aria-label="選択項目を除外する"><i class="bi bi-eye-slash"></i><span class="d-none d-md-inline ms-1">選択項目を除外する</span></button>
                         <?php endif; ?>
                         <?php if (!$is_star_view && !$is_sharebox_view && !$is_recent_view): ?>
-                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#moveItemsModal"><i class="bi bi-folder-symlink"></i> 選択項目を移動</button>
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#moveItemsModal" title="選択項目を移動" aria-label="選択項目を移動"><i class="bi bi-folder-symlink"></i><span class="d-none d-md-inline ms-1">選択項目を移動</span></button>
                             <?php if (!$is_inbox_view): ?>
-                                <button class="btn btn-outline-info btn-sm ms-1" data-bs-toggle="modal" data-bs-target="#moveToInboxModal"><i class="bi bi-inbox-fill"></i> INBOXへ移動</button>
+                                <button class="btn btn-outline-info btn-sm ms-1" data-bs-toggle="modal" data-bs-target="#moveToInboxModal" title="INBOXへ移動" aria-label="INBOXへ移動"><i class="bi bi-inbox-fill"></i><span class="d-none d-md-inline ms-1">INBOXへ移動</span></button>
                             <?php endif; ?>
                             <?php if (is_sharebox_enabled()): ?>
-                                <button class="btn btn-outline-success btn-sm ms-1" data-bs-toggle="modal" data-bs-target="#moveToShareboxModal"><i class="bi bi-share-fill"></i> <?= $is_sharebox_folder ? '他の共有フォルダへ移動' : 'SHARE BOXへ移動' ?></button>
+                                <?php $sharebox_btn_text = $is_sharebox_folder ? '他の共有フォルダへ移動' : 'SHARE BOXへ移動'; ?>
+                                <button class="btn btn-outline-success btn-sm ms-1" data-bs-toggle="modal" data-bs-target="#moveToShareboxModal" title="<?= $sharebox_btn_text ?>" aria-label="<?= $sharebox_btn_text ?>"><i class="bi bi-share-fill"></i><span class="d-none d-md-inline ms-1"><?= $sharebox_btn_text ?></span></button>
                             <?php endif; ?>
-                            <button class="btn btn-danger btn-sm" id="batchDeleteBtn"><i class="bi bi-trash"></i> 選択項目を削除</button>
+                            <button class="btn btn-danger btn-sm ms-1" id="batchDeleteBtn" title="選択項目を削除" aria-label="選択項目を削除"><i class="bi bi-trash"></i><span class="d-none d-md-inline ms-1">選択項目を削除</span></button>
                         <?php endif; ?>
                     </div>
                 </div>
