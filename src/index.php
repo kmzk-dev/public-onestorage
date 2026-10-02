@@ -205,15 +205,15 @@ $all_dirs = $dir_cache['list'];
 $breadcrumbs = [];
 //パンくずリスト
 if ($is_star_view) {
-    $breadcrumbs[] = ['name' => 'Starred Items', 'path' => 'starred'];
+    $breadcrumbs[] = ['name' => 'STAR', 'path' => 'starred'];
 } elseif ($is_recent_view) {
     $breadcrumbs[] = ['name' => 'RECENT', 'path' => 'recent'];
 } elseif ($is_inbox_view) {
     $breadcrumbs[] = ['name' => 'INBOX', 'path' => 'inbox'];
 } elseif ($is_sharebox_view) {
-    $breadcrumbs[] = ['name' => 'SHARE BOX', 'path' => 'sharebox'];
+    $breadcrumbs[] = ['name' => 'SHARE', 'path' => 'sharebox'];
 } elseif ($is_sharebox_folder) {
-    $breadcrumbs[] = ['name' => 'SHARE BOX', 'path' => 'sharebox'];
+    $breadcrumbs[] = ['name' => 'SHARE', 'path' => 'sharebox'];
     $folder_name = substr($current_path_raw, 9);
     $breadcrumbs[] = ['name' => $folder_name, 'path' => $current_path_raw];
 } else {
@@ -268,7 +268,7 @@ $json_recent_view = json_encode($is_recent_view);
                     <ul class="nav flex-column px-3">
                         <li class="nav-item">
                             <a class="nav-link <?= $is_star_view ? 'active' : '' ?>" href="?path=starred">
-                                <i class="bi bi-star-fill me-2" style="color: gold;"></i>Starred Items
+                                <i class="bi bi-star-fill me-2" style="color: gold;"></i>STAR
                             </a>
                         </li>
                         <li class="nav-item">
@@ -286,7 +286,7 @@ $json_recent_view = json_encode($is_recent_view);
                                  aria-expanded="<?= $is_boxes_active ? 'true' : 'false' ?>" 
                                  title="<?= $is_boxes_active ? '折りたたむ' : 'その他を展開' ?>">
                                 <i class="bi bi-chevron-down toggle-icon-closed small"></i>
-                                <i class="bi bi-three-dots toggle-icon-opened small"></i>
+                                <i class="bi bi-chevron-up toggle-icon-opened small"></i>
                             </div>
                             <div class="collapse <?= $is_boxes_active ? 'show' : '' ?>" id="boxesCollapse">
                                 <ul class="nav flex-column mt-1">
@@ -298,17 +298,22 @@ $json_recent_view = json_encode($is_recent_view);
                                     <li class="nav-item">
                                         <?php if (is_sharebox_enabled()): ?>
                                             <a class="nav-link <?= ($is_sharebox_view || $is_sharebox_folder) ? 'active' : '' ?>" href="?path=sharebox">
-                                                <i class="bi bi-share-fill me-2 text-success"></i>SHARE BOX
+                                                <i class="bi bi-share-fill me-2 text-success"></i>SHARE
                                             </a>
                                         <?php else: ?>
                                             <a class="nav-link text-muted" href="admin.php" title="管理設定から有効化できます">
-                                                <i class="bi bi-share me-2"></i>SHARE BOX
+                                                <i class="bi bi-share me-2"></i>SHARE
                                                 <span class="badge bg-secondary ms-1 small">未設定</span>
                                             </a>
                                         <?php endif; ?>
                                     </li>
                                 </ul>
                             </div>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= $is_root_view ? 'active' : '' ?>" href="?path=">
+                                <i class="bi bi-house-door me-2"></i>HOME
+                            </a>
                         </li>
                     </ul>
                 </div>
@@ -361,7 +366,7 @@ $json_recent_view = json_encode($is_recent_view);
                             <ol class="breadcrumb">
                                 <?php foreach ($breadcrumbs as $crumb): ?>
                                     <li class="breadcrumb-item">
-                                        <?php if ($crumb['name'] === 'Starred Items'): ?>
+                                        <?php if ($crumb['name'] === 'STAR'): ?>
                                             <a href="?path=starred" class="text-dark text-decoration-none">
                                                 <i class="bi bi-star-fill me-1 text-warning"></i><?= htmlspecialchars($crumb['name'], ENT_QUOTES, 'UTF-8') ?>
                                             </a>
@@ -373,7 +378,7 @@ $json_recent_view = json_encode($is_recent_view);
                                             <a href="?path=inbox" class="text-dark text-decoration-none">
                                                 <i class="bi bi-inbox-fill me-1 text-info"></i><?= htmlspecialchars($crumb['name'], ENT_QUOTES, 'UTF-8') ?>
                                             </a>
-                                        <?php elseif ($crumb['name'] === 'SHARE BOX'): ?>
+                                        <?php elseif ($crumb['name'] === 'SHARE'): ?>
                                             <a href="?path=sharebox" class="text-dark text-decoration-none">
                                                 <i class="bi bi-share-fill me-1 text-success"></i><?= htmlspecialchars($crumb['name'], ENT_QUOTES, 'UTF-8') ?>
                                             </a>
