@@ -317,10 +317,67 @@ $initial_qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data
                                         <span class="badge bg-primary text-white fs-6">v<?= htmlspecialchars($app_version, ENT_QUOTES, 'UTF-8') ?></span>
                                     </div>
                                     <div class="text-muted small">
-                                        アップデートは
-                                        <a href="https://github.com/kmzk-dev/public-onestorage/releases" target="_blank" class="text-decoration-none">GitHubのリリース</a>
-                                        から任意のバージョンの<code>installer.php</code>をダウンロードしてブラウザから実行してください。
+                                        GitHubの公式リリースから直接最新バージョンへアップデートできます。
                                     </div>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" id="btnCheckUpdate">
+                                        <i class="bi bi-arrow-repeat me-1"></i>
+                                        <span>アップデートを確認</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- アップデート確認結果エリア -->
+                            <div id="updateStatusContainer" class="mt-3 pt-3 border-top d-none">
+                                <!-- ローディング中 -->
+                                <div id="updateChecking" class="d-none text-muted small py-2">
+                                    <span class="spinner-border spinner-border-sm text-primary me-2" role="status"></span>
+                                    GitHubから最新のリリース情報を取得しています...
+                                </div>
+
+                                <!-- 最新状態メッセージ -->
+                                <div id="updateUpToDate" class="alert alert-success d-none mb-0 py-2 small d-flex align-items-center">
+                                    <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+                                    <span>お使いの ONE STORAGE は最新です（v<?= htmlspecialchars($app_version, ENT_QUOTES, 'UTF-8') ?>）。</span>
+                                </div>
+
+                                <!-- 更新ありエリア -->
+                                <div id="updateAvailable" class="d-none">
+                                    <div class="alert alert-warning mb-3 py-2 small d-flex align-items-center">
+                                        <i class="bi bi-exclamation-triangle-fill me-2 fs-5 text-warning"></i>
+                                        <div>
+                                            <strong class="text-dark">新しいバージョンが利用可能です。</strong>
+                                            <div class="text-muted">アップデートを実行しても設定ファイルや保存データは保護されます。</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-2 align-items-center mb-3">
+                                        <div class="col-sm-5">
+                                            <label for="selectUpdateVersion" class="form-label small fw-bold text-muted mb-1">更新先バージョン</label>
+                                            <select class="form-select form-select-sm" id="selectUpdateVersion"></select>
+                                        </div>
+                                        <div class="col-sm-7 pt-sm-4">
+                                            <span class="text-muted small" id="updateReleaseMeta"></span>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <button type="button" class="btn btn-primary btn-sm d-inline-flex align-items-center" id="btnApplyUpdate">
+                                            <i class="bi bi-cloud-arrow-down me-1"></i>
+                                            <span>このバージョンにアップデート</span>
+                                        </button>
+                                        <div id="updateProgressText" class="text-muted small d-none">
+                                            <span class="spinner-border spinner-border-sm text-primary me-1" role="status"></span>
+                                            <span id="updateProgressMsg">ダウンロード中... 展開中...</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- エラーメッセージ -->
+                                <div id="updateError" class="alert alert-danger d-none mb-0 py-2 small">
+                                    <i class="bi bi-exclamation-octagon-fill me-2"></i>
+                                    <span id="updateErrorMsg"></span>
                                 </div>
                             </div>
                         </div>
@@ -1300,6 +1357,150 @@ $initial_qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data
         document.addEventListener('DOMContentLoaded', () => {
             runSecurityCheck();
         });
+
+        // ==============================================
+        // バージョン確認 & セルフアップデート処理
+        // ==============================================
+        const btnCheckUpdate = document.getElementById('btnCheckUpdate');
+        const updateStatusContainer = document.getElementById('updateStatusContainer');
+        const updateChecking = document.getElementById('updateChecking');
+        const updateUpToDate = document.getElementById('updateUpToDate');
+        const updateAvailable = document.getElementById('updateAvailable');
+        const updateError = document.getElementById('updateError');
+        const updateErrorMsg = document.getElementById('updateErrorMsg');
+        const selectUpdateVersion = document.getElementById('selectUpdateVersion');
+        const updateReleaseMeta = document.getElementById('updateReleaseMeta');
+        const btnApplyUpdate = document.getElementById('btnApplyUpdate');
+        const updateProgressText = document.getElementById('updateProgressText');
+        const updateProgressMsg = document.getElementById('updateProgressMsg');
+
+        let availableReleases = [];
+
+        if (btnCheckUpdate) {
+            btnCheckUpdate.addEventListener('click', async () => {
+                btnCheckUpdate.disabled = true;
+                updateStatusContainer.classList.remove('d-none');
+                updateChecking.classList.remove('d-none');
+                updateUpToDate.classList.add('d-none');
+                updateAvailable.classList.add('d-none');
+                updateError.classList.add('d-none');
+
+                try {
+                    const res = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'check_releases' })
+                    });
+                    const result = await res.json();
+                    updateChecking.classList.add('d-none');
+
+                    if (!result.success) {
+                        updateError.classList.remove('d-none');
+                        updateErrorMsg.textContent = result.message || 'リリース情報の取得に失敗しました。';
+                        btnCheckUpdate.disabled = false;
+                        return;
+                    }
+
+                    if (!result.has_update || !result.releases || result.releases.length === 0) {
+                        updateUpToDate.classList.remove('d-none');
+                    } else {
+                        availableReleases = result.releases;
+                        selectUpdateVersion.innerHTML = '';
+                        availableReleases.forEach((rel, index) => {
+                            const opt = document.createElement('option');
+                            opt.value = rel.tag_name;
+                            opt.textContent = `${rel.name || rel.tag_name} (${rel.tag_name})`;
+                            if (index === 0) opt.selected = true;
+                            selectUpdateVersion.appendChild(opt);
+                        });
+
+                        const updateMetaDisplay = () => {
+                            const selectedTag = selectUpdateVersion.value;
+                            const found = availableReleases.find(r => r.tag_name === selectedTag);
+                            if (found) {
+                                let metaText = '';
+                                if (found.published_at) {
+                                    const dateStr = new Date(found.published_at).toLocaleDateString('ja-JP');
+                                    metaText += `公開日: ${dateStr} `;
+                                }
+                                if (found.html_url) {
+                                    metaText += `<a href="${found.html_url}" target="_blank" class="text-decoration-none ms-1"><i class="bi bi-box-arrow-up-right me-1"></i>リリースノート</a>`;
+                                }
+                                updateReleaseMeta.innerHTML = metaText;
+                            }
+                        };
+
+                        selectUpdateVersion.addEventListener('change', updateMetaDisplay);
+                        updateMetaDisplay();
+                        updateAvailable.classList.remove('d-none');
+                    }
+                } catch (err) {
+                    updateChecking.classList.add('d-none');
+                    updateError.classList.remove('d-none');
+                    updateErrorMsg.textContent = '通信エラーが発生しました: ' + err.message;
+                } finally {
+                    btnCheckUpdate.disabled = false;
+                }
+            });
+        }
+
+        if (btnApplyUpdate) {
+            btnApplyUpdate.addEventListener('click', async () => {
+                const selectedTag = selectUpdateVersion.value;
+                const found = availableReleases.find(r => r.tag_name === selectedTag);
+                if (!found) {
+                    alert('対象のバージョン情報が見つかりません。');
+                    return;
+                }
+
+                if (!confirm(`バージョン ${selectedTag} にアップデートを実行しますか？\n必要に応じて事前にバックアップを取得してください。`)) {
+                    return;
+                }
+
+                btnApplyUpdate.disabled = true;
+                btnCheckUpdate.disabled = true;
+                selectUpdateVersion.disabled = true;
+                updateProgressText.classList.remove('d-none');
+                updateProgressMsg.textContent = 'ダウンロード中... 展開中... (しばらくお待ちください)';
+
+                try {
+                    const res = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'apply_update',
+                            data: {
+                                version: found.tag_name,
+                                zip_url: found.zip_url
+                            }
+                        })
+                    });
+                    const result = await res.json();
+
+                    if (!result.success) {
+                        btnApplyUpdate.disabled = false;
+                        btnCheckUpdate.disabled = false;
+                        selectUpdateVersion.disabled = false;
+                        updateProgressText.classList.add('d-none');
+                        showToast('danger', result.message || 'アップデートに失敗しました。');
+                        return;
+                    }
+
+                    updateProgressMsg.textContent = 'アップデート完了！ページを再読み込みします...';
+                    showToast('success', result.message || 'アップデートが完了しました。');
+
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1800);
+                } catch (err) {
+                    btnApplyUpdate.disabled = false;
+                    btnCheckUpdate.disabled = false;
+                    selectUpdateVersion.disabled = false;
+                    updateProgressText.classList.add('d-none');
+                    showToast('danger', '通信エラーが発生しました: ' + err.message);
+                }
+            });
+        }
 
     </script>
 </body>
