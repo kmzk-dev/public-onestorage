@@ -13,3 +13,4 @@ share*/
 *.db-shm
 *.db-journal
 AGENTS.md
+.agents/
