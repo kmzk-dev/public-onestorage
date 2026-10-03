@@ -3,7 +3,7 @@ title: "ONE STORAGE"
 subtitle: "格安サーバー・VPSで動作する超軽量パーソナルストレージ"
 category: "web"
 storeUrl: "https://github.com/kmzk-dev/public-onestorage/releases"
-lastUpdated: "2026-10-02"
+lastUpdated: "2026-10-03"
 ---
 # ONE STORAGE (EN/JP)
 
@@ -51,6 +51,7 @@ ONE STORAGE purposefully eliminates unnecessary features to maintain high securi
 - **Protected Folder Deletion**: To prevent server timeouts and catastrophic accidental data loss, folders can only be deleted when completely empty.
 - **Physical Sharing Isolation**: Unlike ordinary cloud storage where private files are shared directly via URLs, files must be explicitly moved or uploaded to the dedicated SHARE box, preventing accidental exposure or forgotten public links.
 - **PDF Preview**: Encrypted PDFs can be scrolled directly in the browser. Temporary preview cache files are automatically deleted from the server the moment the tab is closed.
+- **On-Demand Fullscreen Image Viewer**: Encrypted photos (JPG, PNG, GIF, WebP, SVG, etc.) can be viewed in an immersive fullscreen dark viewer with keyboard navigation (←/→/Esc). Features on-demand stream decryption, spam-click debouncing, single-item preloading, and immediate memory release upon closing to protect server resources.
 
 **[JP]**
 ストレージの圧迫や誤操作を防ぎ、高いセキュリティと軽快さを維持するための意図的な設計方針を採用しています。
@@ -58,6 +59,7 @@ ONE STORAGE purposefully eliminates unnecessary features to maintain high securi
 - **フォルダ削除の保護制限**: 再帰削除によるサーバー負荷や誤操作による一括消失を防ぐため、「中身が空の場合のみ削除可能」という安全機構を採用。
 - **共有の物理分離**: プライベートファイルを直接URL公開するのではなく、隔離されたSHARE領域へ明示的に移動・配置して公開することで、誤公開やリンク解除忘れを根本から防止。
 - **PDFプレビュー**: 暗号化されたPDF文書をブラウザ上で縦スクロール閲覧可能。生成された一時キャッシュはタブを閉じた瞬間にサーバーから自動削除されます。
+- **オンデマンド全画面画像ビューアー**: 暗号化された画像（JPG, PNG, GIF, WebP, SVG等）を没入感のある全画面黒背景ビューアーで軽快に閲覧可能。キーボード操作（←/→/Esc）に対応し、オンデマンド復号ストリーム、連打抑止デバウンス、前後1枚限定プリロード、閉じる際のメモリ即時解放により、サーバーおよび端末リソースを徹底保護。
 
 ### Chunked Upload
 **[EN]**

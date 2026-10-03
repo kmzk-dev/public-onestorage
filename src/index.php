@@ -528,12 +528,14 @@ $json_recent_view = json_encode($is_recent_view);
                                         $file_icon_info = get_file_icon_info($item['name']);
                                         $extension = strtolower(pathinfo($item['name'], PATHINFO_EXTENSION));
                                         $is_pdf = ($extension === 'pdf');
+                                        $is_image = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif']);
                                         $view_action_url = $is_pdf
                                             ? "?action=pdf_preview&path=" . urlencode($item_full_web_path)
                                              : "?action=view&path=" . urlencode($item_full_web_path);
-                                        $link_classes = 'd-flex align-items-center text-truncate' . ($is_pdf ? ' preview-trigger' : '');
+                                        $link_classes = 'd-flex align-items-center text-truncate' . ($is_pdf ? ' preview-trigger' : '') . ($is_image ? ' image-preview-trigger' : '');
+                                        $image_data_attrs = $is_image ? ' data-image-name="' . $item_name_escaped . '" data-image-path="' . htmlspecialchars($item_full_web_path, ENT_QUOTES, 'UTF-8') . '"' : '';
                                     ?>
-                                        <a href="<?= $view_action_url ?>" target="_blank" class="<?= $link_classes ?>" title="<?= $item_name_escaped ?>">
+                                        <a href="<?= $view_action_url ?>" target="_blank" class="<?= $link_classes ?>" title="<?= $item_name_escaped ?>"<?= $image_data_attrs ?>>
                                             <i class="bi <?= $file_icon_info['icon'] ?> <?= $file_icon_info['color'] ?> me-2 fs-5 flex-shrink-0"></i>
                                             <span class="text-truncate"><?= $item_name_escaped ?></span>
                                             <?php if ($is_star_view || $is_recent_view): ?>
@@ -670,6 +672,7 @@ $json_recent_view = json_encode($is_recent_view);
     require_once __DIR__ . '/static/component_create_share_link_modal.php';
     require_once __DIR__ . '/static/component_recent_exclusions_modal.php';
     require_once __DIR__ . '/static/preview_modal.php';
+    require_once __DIR__ . '/static/component_image_viewer_modal.php';
     ?>
     <form action="index.php" method="post" id="batchDeleteForm" class="d-none">
         <input type="hidden" name="action" value="delete_items">

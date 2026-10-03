@@ -980,4 +980,228 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- 画像ビューアーロジック ---
+    const imageModalEl = document.getElementById('imageViewerModal');
+    if (imageModalEl) {
+        // スタッキングコンテキスト対策（body直下に配置）
+        if (imageModalEl.parentNode !== document.body) {
+            document.body.appendChild(imageModalEl);
+        }
+
+        const imageModalInstance = bootstrap.Modal.getOrCreateInstance(imageModalEl, {
+            backdrop: true,
+            keyboard: true
+        });
+
+        const imgEl = document.getElementById('imageViewerImg');
+        const spinnerEl = document.getElementById('imageViewerSpinner');
+        const fileNameEl = document.getElementById('imageViewerFileName');
+        const prevBtn = document.getElementById('imageViewerPrevBtn');
+        const nextBtn = document.getElementById('imageViewerNextBtn');
+        const closeBtn = document.getElementById('imageViewerCloseBtn');
+
+        let imageList = [];
+        let currentIndex = -1;
+        let debounceTimer = null;
+        let preloadPrev = null;
+        let preloadNext = null;
+
+        // プリロードの破棄
+        const clearPreloads = () => {
+            if (preloadPrev) {
+                preloadPrev.onload = null;
+                preloadPrev.onerror = null;
+                preloadPrev.src = '';
+                preloadPrev = null;
+            }
+            if (preloadNext) {
+                preloadNext.onload = null;
+                preloadNext.onerror = null;
+                preloadNext.src = '';
+                preloadNext = null;
+            }
+        };
+
+        // 前後1枚のみ先読み
+        const updatePreload = (index) => {
+            clearPreloads();
+            if (index > 0 && imageList[index - 1]) {
+                preloadPrev = new Image();
+                preloadPrev.src = imageList[index - 1].url;
+            }
+            if (index < imageList.length - 1 && imageList[index + 1]) {
+                preloadNext = new Image();
+                preloadNext.src = imageList[index + 1].url;
+            }
+        };
+
+        // UI（ボタン表示・ファイル名）の即時更新
+        const updateNavUi = (index) => {
+            if (index < 0 || index >= imageList.length) return;
+            const item = imageList[index];
+            if (fileNameEl) {
+                fileNameEl.textContent = item.name;
+                fileNameEl.title = item.name;
+            }
+            if (prevBtn) {
+                prevBtn.style.display = index > 0 ? 'block' : 'none';
+            }
+            if (nextBtn) {
+                nextBtn.style.display = index < imageList.length - 1 ? 'block' : 'none';
+            }
+        };
+
+        // 実際の画像読み込みリクエスト処理
+        const loadImage = (index) => {
+            if (index < 0 || index >= imageList.length) return;
+            const item = imageList[index];
+
+            if (spinnerEl) spinnerEl.classList.remove('d-none');
+            if (imgEl) {
+                imgEl.classList.add('d-none');
+                imgEl.onload = () => {
+                    if (spinnerEl) spinnerEl.classList.add('d-none');
+                    imgEl.classList.remove('d-none');
+                    // ロード完了後に前後1枚を先読み
+                    updatePreload(index);
+                };
+                imgEl.onerror = () => {
+                    if (spinnerEl) spinnerEl.classList.add('d-none');
+                    if (fileNameEl) {
+                        fileNameEl.textContent = `${item.name} (画像の読み込みに失敗しました)`;
+                    }
+                };
+                imgEl.src = item.url;
+            }
+        };
+
+        // 画像切り替え（デバウンスによる連打・過剰リクエスト抑制）
+        const navigateTo = (index, immediate = false) => {
+            if (index < 0 || index >= imageList.length) return;
+            currentIndex = index;
+            updateNavUi(currentIndex);
+
+            // デバウンスタイマーのクリア
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+                debounceTimer = null;
+            }
+
+            if (spinnerEl) spinnerEl.classList.remove('d-none');
+            if (imgEl) imgEl.classList.add('d-none');
+
+            if (immediate) {
+                loadImage(currentIndex);
+            } else {
+                debounceTimer = setTimeout(() => {
+                    loadImage(currentIndex);
+                }, 200); // 200msのデバウンスで連打時のサーバー復号負荷を防止
+            }
+        };
+
+        // 画像リンクのクリックハンドラ (Event Delegation)
+        document.addEventListener('click', (e) => {
+            const trigger = e.target.closest('a.image-preview-trigger');
+            if (!trigger) return;
+
+            // Ctrl/Cmd/Shiftキー押下時は通常リンク動作（別タブ表示）を許可
+            if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+
+            e.preventDefault();
+
+            // 他のモーダル（検索等）が開いていたら閉じる
+            const activeModal = trigger.closest('.modal');
+            if (activeModal && activeModal.id !== 'imageViewerModal') {
+                const activeModalInstance = bootstrap.Modal.getInstance(activeModal);
+                if (activeModalInstance) {
+                    activeModalInstance.hide();
+                }
+            }
+
+            // DOM上にレンダリングされている画像トリガー要素からリストを動的抽出
+            const triggerEls = Array.from(document.querySelectorAll('a.image-preview-trigger'));
+            imageList = triggerEls.map(el => ({
+                url: el.getAttribute('href'),
+                name: el.getAttribute('data-image-name') || el.getAttribute('title') || ''
+            })).filter(item => item.url);
+
+            const clickedUrl = trigger.getAttribute('href');
+            currentIndex = imageList.findIndex(item => item.url === clickedUrl);
+
+            if (currentIndex !== -1) {
+                imageModalInstance.show();
+                navigateTo(currentIndex, true);
+            }
+        });
+
+        // ナビゲーションボタン操作
+        if (prevBtn) {
+            prevBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (currentIndex > 0) {
+                    navigateTo(currentIndex - 1);
+                }
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (currentIndex < imageList.length - 1) {
+                    navigateTo(currentIndex + 1);
+                }
+            });
+        }
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                imageModalInstance.hide();
+            });
+        }
+
+        // キーボード操作（初期化時に1度だけ登録、モーダル展開時のみ判定して動作）
+        document.addEventListener('keydown', (e) => {
+            if (!imageModalEl.classList.contains('show')) return;
+
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                if (currentIndex > 0) {
+                    navigateTo(currentIndex - 1);
+                }
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                if (currentIndex < imageList.length - 1) {
+                    navigateTo(currentIndex + 1);
+                }
+            }
+        });
+
+        // モーダルが閉じた際のメモリ解放処理
+        imageModalEl.addEventListener('hidden.bs.modal', () => {
+            if (debounceTimer) {
+                clearTimeout(debounceTimer);
+                debounceTimer = null;
+            }
+            clearPreloads();
+            if (imgEl) {
+                imgEl.onload = null;
+                imgEl.onerror = null;
+                imgEl.src = ''; // デコードされた画像リソースの参照を解放
+                imgEl.classList.add('d-none');
+            }
+            if (spinnerEl) spinnerEl.classList.add('d-none');
+            if (fileNameEl) fileNameEl.textContent = '';
+            currentIndex = -1;
+            imageList = [];
+        });
+
+        // アクセシビリティ対応：非表示開始時にフォーカス解除
+        imageModalEl.addEventListener('hide.bs.modal', () => {
+            if (document.activeElement && imageModalEl.contains(document.activeElement)) {
+                document.activeElement.blur();
+            }
+        });
+    }
+
 });

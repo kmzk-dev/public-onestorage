@@ -87,13 +87,14 @@ onestorage/ (リポジトリルート)
     │   └── star.php               # スター（お気に入り）登録・解除API
     │
     └── static/                    # フロントエンドUI・アセット群
-        ├── asset_index.js         # メインJS（非同期CRUD、D&Dアップロード、モーダル制御、容量連動）
+        ├── asset_index.js         # メインJS（非同期CRUD、D&Dアップロード、モーダル制御、画像ビューアー制御）
         ├── img_logo.PNG           # システムロゴ
-        ├── preview_modal.php      # 画像・PDFプレビューモーダル
+        ├── preview_modal.php      # PDFプレビュー用モーダル
         ├── template_head.php      # 共通HTMLヘッダー・CSSスタイル
         ├── template_nav.php       # ナビゲーションバー（容量ゲージ、検索バー、設定リンク）
         ├── component_create_folder_modal.php     # フォルダ作成モーダル
         ├── component_create_share_link_modal.php # 共有リンク作成モーダル
+        ├── component_image_viewer_modal.php      # 画像専用全画面ビューアーモーダル（黒背景・キー操作対応）
         ├── component_move_item_modal.php         # 階層移動モーダル（ドリルダウンナビ）
         ├── component_move_to_inbox_modal.php     # INBOX移動モーダル
         ├── component_move_to_sharebox_modal.php  # SHARE BOX移動モーダル
@@ -144,6 +145,13 @@ onestorage/ (リポジトリルート)
   - SQLite データベース実体（`.storage.db`, `.share.db`）およびジャーナルファイルの完全保護。
   - 残骸となりうる `installer.php` や `.installer_done` のコピー除外。
 - **DB スキーマ自動追記との親和性:** アプリケーション更新後の初回アクセス時に、既存の `init_db_schema()` / `get_db()` を通じて `CREATE TABLE IF NOT EXISTS` やマイグレーション処理が自動実行される構造を維持。
+
+### ⑦ オンデマンド型全画面画像ビューアー (`component_image_viewer_modal.php`, `asset_index.js`)
+- **API追加呼び出しゼロ（DOMからの動的リスト抽出）:** 画像一覧を取得する専用APIは設けず、`index.php` 描画時に付与された `.image-preview-trigger` クラス要素からJavaScriptがクライアント側で動的に画像配列とインデックスを特定。
+- **オンデマンド復号ストリーム:** 単一の `<img>` 要素の `src` を既存の配信エンドポイント（`?action=view&path=...`）にセットし、閲覧要求があった画像のみをサーバー上で復号してストリーム配信。
+- **サーバー負荷・過剰復号防止（200ms デバウンス）:** ナビゲーションキー（←/→）やボタンが素早く連打された場合、中間の画像への不要な復号リクエストを抑制し、最終確定した画像のみストリーム取得を要求。
+- **先読み（Preload）の最小化:** 画像ロード完了後に前後各1枚のみ（`preloadPrev`, `preloadNext`）をプリロードし、ブラウザメモリへのImageオブジェクトの無限蓄積を防止。
+- **厳格なメモリ解放・多重登録防止:** モーダル非表示時（`hidden.bs.modal`）に `img.src = ''` を実行してデコード済み画像リソースの参照を解放。`keydown` リスナーは初期化時に1度だけ登録し、モーダル展開時のみ判定して実行。
 
 ---
 
