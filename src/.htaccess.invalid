@@ -1,4 +1,15 @@
-RewriteEngine On
-RewriteCond %{HTTPS} off
-RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# ----------------------------------------------------------------------
+# 1. 常時SSL (HTTPS強制) リダイレクト
+# ----------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
 
+# ----------------------------------------------------------------------
+# 2. 検索エンジンのインデックス・キャッシュ遮断
+# ----------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header set X-Robots-Tag "noindex, nofollow, noarchive"
+</IfModule>

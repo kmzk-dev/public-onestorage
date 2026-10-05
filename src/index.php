@@ -3,6 +3,7 @@ define('ONESTORAGE_RUNNING', true);
 header('X-Frame-Options: SAMEORIGIN');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
+header('X-Robots-Tag: noindex, nofollow, noarchive');
 // 開発用
 ini_set('display_errors', 1);
 error_reporting(E_ALL);

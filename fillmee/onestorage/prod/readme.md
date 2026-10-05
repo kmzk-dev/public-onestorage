@@ -3,7 +3,7 @@ title: "ONE STORAGE"
 subtitle: "格安サーバー・VPSで動作する超軽量パーソナルストレージ"
 category: "web"
 storeUrl: "https://github.com/kmzk-dev/public-onestorage/releases"
-lastUpdated: "2026-10-03"
+lastUpdated: "2026-10-05"
 ---
 # ONE STORAGE (EN/JP)
 
@@ -73,14 +73,14 @@ Asynchronous chunked file uploading bypasses restrictive server upload limits, m
 - **Mandatory TOTP MFA**: Enforces 6-digit one-time password authentication via Google Authenticator or compatible TOTP apps.
 - **Strict Credential Policy**: Mandates passwords of 15+ characters with uppercase, lowercase, and numbers.
 - **HMAC-SHA256 Signed Cookies**: Sessions are cryptographically signed. Password updates immediately invalidate all existing sessions and cookies.
-- **Defense in Depth**: Real data stored under obfuscated random directories, guarded by multi-layer `.htaccess` rules and direct-execution prevention (`ONESTORAGE_RUNNING`).
-- **Self-Security Diagnostic**: Verify directory access permissions and `.htaccess` protection with one click in the admin console.
+- **Defense in Depth**: Real data stored under obfuscated random directories, guarded by multi-layer `.htaccess` rules, comprehensive anti-indexing (`robots.txt`, `X-Robots-Tag: noindex, nofollow, noarchive`), Nginx security snippets, and direct-execution prevention (`ONESTORAGE_RUNNING`).
+- **Self-Security Diagnostic**: Verify directory access permissions, `.htaccess` protection, and Nginx configurations with one click in the admin console.
 
 **[JP]**
 - **二要素認証（MFA/TOTP）必須**: Google Authenticator等による6桁ワンタイムパスワード認証を標準化。
 - **15文字以上の厳格なパスワードポリシー**: 大文字・小文字・数字の混在を必須化。
 - **HMAC-SHA256署名付きセキュアクッキー**: セッション改ざんを防止。パスワード変更時には秘密鍵が自動再生成され、既存の全セッションを一括強制ログアウト。
-- **多層防御**: 推測不能なランダムディレクトリ名、多層の`.htaccess`による直接アクセス拒否、スクリプト直接実行防止（`ONESTORAGE_RUNNING`）。
+- **多層防御 & インデックス完全遮断**: 推測不能なランダムディレクトリ名、多層の`.htaccess`による直接アクセス拒否、検索エンジンインデックス完全遮断（`robots.txt`、全レスポンスへの`X-Robots-Tag`、HTML `meta`タグ）、Nginx向け設定スニペット提供、スクリプト直接実行防止（`ONESTORAGE_RUNNING`）。
 - **セルフセキュリティ診断**: 設定ファイルやデータ領域の保護状態を管理画面からワンクリックで自動検査。
 
 ## System Requirements & Environment

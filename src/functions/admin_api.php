@@ -13,6 +13,7 @@ if (php_sapi_name() === 'cli' && empty($_SERVER['REQUEST_METHOD'])) {
 }
 
 header('Content-Type: application/json; charset=utf-8');
+header('X-Robots-Tag: noindex, nofollow, noarchive');
 
 // POSTメソッドのみ許可
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
@@ -231,8 +232,13 @@ switch ($action) {
 
         // Nginx用の設定サンプル
         $nginx_snippet = "# Nginx セキュリティ保護設定例 (server ブロック内に記載)\n"
+            . "# 1. 検索エンジンのインデックス・キャッシュ遮断\n"
+            . "add_header X-Robots-Tag \"noindex, nofollow, noarchive\" always;\n\n"
+            . "# 2. 設定ディレクトリへの直接アクセス遮断\n"
             . "location ^~ /" . $config_rel . " {\n    deny all;\n    return 404;\n}\n\n"
+            . "# 3. データ・共有ディレクトリへの直接アクセス遮断\n"
             . "location ~* /(data|share).* {\n    deny all;\n    return 404;\n}\n\n"
+            . "# 4. ドットファイル・隠しファイルへのアクセス拒否\n"
             . "location ~ /\\.(?!well-known).* {\n    deny all;\n    return 404;\n}\n";
 
         $response = [

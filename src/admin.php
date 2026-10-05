@@ -3,6 +3,7 @@ define('ONESTORAGE_RUNNING', true);
 header('X-Frame-Options: SAMEORIGIN');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
+header('X-Robots-Tag: noindex, nofollow, noarchive');
 
 require_once __DIR__ . '/path.php';
 require_once __DIR__ . '/functions/init.php';
@@ -68,7 +69,7 @@ $initial_qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>管理設定 - ONE STORAGE</title>
-    <meta name="robots" content="noindex, nofollow">
+    <meta name="robots" content="noindex, nofollow, noarchive">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
@@ -724,9 +725,29 @@ $initial_qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data
                                                 </button>
                                             </div>
                                             <p class="text-muted small mb-2" style="font-size: 0.8rem;">
-                                                Nginxは .htaccess を解釈しないため、Webサーバー設定（nginx.conf 等）の server ブロックに以下を記載してください。
+                                                Nginxは .htaccess を解釈しないため、Webサーバー設定（nginx.conf 等）の server ブロックに以下を記載してください。検索エンジンのインデックス遮断（X-Robots-Tag）および設定・データ領域への直接アクセス遮断が適用されます。
                                             </p>
-                                            <pre class="bg-dark text-light p-3 rounded small mb-0 font-monospace" style="font-size: 0.75rem; max-height: 160px; overflow-y: auto;" id="nginxSnippetCode"></pre>
+                                            <pre class="bg-dark text-light p-3 rounded small mb-0 font-monospace" style="font-size: 0.75rem; max-height: 200px; overflow-y: auto;" id="nginxSnippetCode"># Nginx セキュリティ保護設定例 (server ブロック内に記載)
+# 1. 検索エンジンのインデックス・キャッシュ遮断
+add_header X-Robots-Tag "noindex, nofollow, noarchive" always;
+
+# 2. 設定ディレクトリへの直接アクセス遮断
+location ^~ /config {
+    deny all;
+    return 404;
+}
+
+# 3. データ・共有ディレクトリへの直接アクセス遮断
+location ~* /(data|share).* {
+    deny all;
+    return 404;
+}
+
+# 4. ドットファイル・隠しファイルへのアクセス拒否
+location ~ /\.(?!well-known).* {
+    deny all;
+    return 404;
+}</pre>
                                         </div>
                                     </div>
                                 </div>

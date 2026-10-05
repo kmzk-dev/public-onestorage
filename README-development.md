@@ -17,8 +17,9 @@ ONE STORAGE は、**「共用レンタルサーバー等の低リソース環境
    - 外部 RDBMS サーバー（MySQL/PostgreSQL等）のセットアップは不要です。各データディレクトリ内に自動生成される SQLite データベースファイル（`.storage.db` / `.share.db`）をキャッシュ・インデックス層として利用し、ミリ秒単位のファイル名検索や階層走査を実現します。
 4. **常時ストリーム暗号化（AES-256-CBC）**
    - サーバー上のファイルはすべて管理者メールアドレスから派生した鍵でストリーム暗号化されて保存されます。メモリ消費を抑えるため、大容量ファイルも一定バッファサイズでストリーム暗号化/復号処理されます。
-5. **二重防御セキュリティ（Defense in Depth）**
-   - `.htaccess` によるアクセス拒否に加え、データ・設定フォルダ内にアクセス防止用 `index.html` を自動生成。
+5. **多層防御セキュリティ & インデックス完全遮断（Defense in Depth）**
+   - `robots.txt`、全レスポンスヘッダーへの `X-Robots-Tag: noindex, nofollow, noarchive` 送出、全画面 HTML `meta` タグによる三層防御で検索エンジンの巡回・キャッシュを遮断。
+   - `.htaccess` によるアクセス拒否に加え、データ・設定フォルダ内にアクセス防止用 `index.html` を自動生成。Nginx 向け推奨設定スニペットも管理画面で提供。
    - すべての内部 PHP ロジックは実行コンテキスト定数（`ONESTORAGE_RUNNING`）により直接呼び出しを遮断。
 
 ---
@@ -31,6 +32,7 @@ onestorage/ (リポジトリルート)
 ├── README-security.md             # セキュリティ仕様・多層防御
 ├── README-development.md          # 本書（開発者向けドキュメント）
 ├── README-decrypted.md            # 復号ツールドキュメント
+├── robots.txt                     # 検索エンジン巡回拒否設定（ルート）
 ├── Dockerfile                     # 開発・テスト用 Dockerfile
 ├── docker-compose.yml             # 開発・テスト用 Compose 設定（./src をマウント）
 │
@@ -45,7 +47,8 @@ onestorage/ (リポジトリルート)
 │   └── decrypt.zip                # Windows ネイティブアプリ版一括復号ツール（decrypt.exe）
 │
 └── src/                           # ★ Webアプリケーション本体（サーバー配信用ルート）
-    ├── .htaccess                  # 外部直接アクセス遮断設定
+    ├── .htaccess.invalid          # Apache用サンプル設定（常時SSL・インデックス遮断）
+    ├── robots.txt                 # 検索エンジン巡回拒否設定（Web公開ルート）
     ├── admin.php                  # 管理者画面（容量設定、MFA管理、セキュリティ診断）
     ├── index.php                  # メインファイルブラウザ画面
     ├── installer.php              # ワンファイル自動インストーラー
@@ -204,4 +207,4 @@ docker compose logs -f web
 
 > [!IMPORTANT]
 > **本番反映時の注意事項**
-> `src/functions/auth.php` や `src/.htaccess` の `SKIP_AUTH` / localhost 除外設定は開発・テスト専用です。本番環境へのリリース前には不要なテスト用コードやデバッグ用コードが含まれていないことを必ず確認してください。
+> `src/functions/auth.php` の `SKIP_AUTH` 設定等は開発・テスト専用です。本番環境へのリリース前には不要なテスト用コードやデバッグ用コードが含まれていないことを必ず確認してください。

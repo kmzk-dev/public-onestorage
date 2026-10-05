@@ -20,10 +20,12 @@ const GITHUB_REPO        = 'kmzk-dev/public-onestorage'; // GitHub リポジト�
  * - 特定バージョンを固定する場合: 例 'v1.2.1'
  * - 常に最新版を対象とする場合: 'latest'
  */
-const TARGET_VERSION     = 'v1.3.0'; 
+const TARGET_VERSION     = 'v1.3.1'; 
 const INSTALL_LOCK_FILE  = __DIR__ . '/.installer_done';
 const INSTALLER_TIMEOUT  = 25; // 秒 (一般的なサーバー制限より余裕を持たせる)
 const MIN_PHP_VERSION    = '8.0.0';
+
+header('X-Robots-Tag: noindex, nofollow, noarchive');
 
 // 既にインストール済みならブロック
 if (file_exists(INSTALL_LOCK_FILE)) {
@@ -502,7 +504,7 @@ function recursive_rmdir(string $dir): void
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ONE STORAGE - インストーラー & アップデータ</title>
-    <meta name="robots" content="noindex, nofollow">
+    <meta name="robots" content="noindex, nofollow, noarchive">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
