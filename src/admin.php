@@ -182,14 +182,7 @@ $initial_qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data
     <!-- ヘッダーナビゲーション -->
     <nav class="navbar navbar-dark sticky-top bg-dark px-3">
         <div class="d-flex align-items-center">
-            <button class="navbar-toggler d-md-none border-0 p-1 me-2" type="button" data-bs-toggle="collapse" data-bs-target="#adminSidebarCollapse" aria-controls="adminSidebarCollapse" aria-expanded="false" aria-label="メニュー開閉">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <a class="navbar-brand me-2 d-inline-flex align-items-center" href="index.php">
-                <i class="bi bi-hdd-stack text-primary me-2"></i>
-                <span class="fw-bold fs-6">ONE STORAGE</span>
-            </a>
-            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-1 small">管理設定</span>
+            <span class="navbar-brand mb-0 h1 fs-6 fw-bold text-white">管理設定</span>
         </div>
         <div class="d-flex align-items-center gap-2">
             <span class="text-white-50 small d-none d-sm-inline me-1">

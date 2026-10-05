@@ -20,7 +20,7 @@ const GITHUB_REPO        = 'kmzk-dev/public-onestorage'; // GitHub リポジト�
  * - 特定バージョンを固定する場合: 例 'v1.2.1'
  * - 常に最新版を対象とする場合: 'latest'
  */
-const TARGET_VERSION     = 'v1.3.1'; 
+const TARGET_VERSION     = 'v1.3.2'; 
 const INSTALL_LOCK_FILE  = __DIR__ . '/.installer_done';
 const INSTALLER_TIMEOUT  = 25; // 秒 (一般的なサーバー制限より余裕を持たせる)
 const MIN_PHP_VERSION    = '8.0.0';
